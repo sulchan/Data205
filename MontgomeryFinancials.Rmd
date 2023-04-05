@@ -1,0 +1,473 @@
+---
+title: "County Labor Analysis and Salary Statistics (CLASS)"
+author: "PI: Sulchan Yoon"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+## Data 205 Montgomery College
+### Data Montgomery Employee Salaries From 2019 - 2022
+
+## Summary of Dataset
+
+At the end of 2019, a new viral bacteria took the world by surprise. Unrealized by the world until mid 2020, this virus has made nations rethink how to handle technology, production, policies, medical emergencies, and handling of the economy. Disruptions in the production of common goods have been shot due to policies requiring workers to stay home. Medical researchers to find cures and a policy to allow rapid testing and approvals for mass production was limit tested. A lack of goods brought rare metal productions to a halt, causing technology advancements, including cars, computers, phones, even as simple as a microwave, to be highly limited. With a lack of production, rules requiring distancing, fear of a highly contagious virus spreading around mom-and-pop stores, the global economy was shut down. 
+
+Small private shops did what they could to keep afloat, corporations pushed for teleworking options, hospitals were pushed to their limits, and many non-critical government agencies were forced to minimalize their work force to support the global movement on stopping Corona Virus from spreading. 
+
+Talk about Covid major dates for timeline..... (Part of final)
+
+Data Montgomery has provided a standardized report of employee salaries for many consecutive years. We will be taking a look into the 2019 to 2022 to find trends in overall employment for Montgomery county, look at how wages have been impacted from Covid's economic impact, and see if the lack of employment has had any major impact to the overtime usage. 
+
+
+## Definition of Labels
+
+| Column Information | Type | Description                                 |
+|--------------------|------|---------------------------------------------|
+| Department         | chr  | Department Code                             |
+| Department Name    | chr  | Name of the Department                      |
+| Division           | chr  | Division including division code            |
+| Gender             | chr  | Gender of employee                          |
+| Base Salary        | num  | Rate of pay for the given employee          |
+| Overtime Pay       | num  | Amount of overtime received in the year     |
+| Longevity Pay      | num  | Amount of Longevity pay recieved in the year|
+| Grade              | chr  | Salary grade for the given employee         |
+
+## Questions?
+
+General questions:
+There seems to be some departments with large pay gaps, can we find potential causes?
+
+Has overtime pay overstayed it's welcome?
+
+How does gender play a role in salary statistics for Montgomery County?
+
+Are we getting to the point where job statistics are getting back to pre-covid events? 
+
+## Initiate
+
+```{r}
+pacman::p_load(tidyverse,dplyr,readxl,plotly,ggthemes, viridis)
+
+setwd("~/Data Study/Data 205 MC")
+```
+
+## Load data
+
+```{r}
+db2019 <- read.csv("Employee_Salaries_2019.csv")
+db2020 <- read.csv("Employee_Salaries_2020.csv")
+db2021 <- read.csv("Employee_Salaries_2021.csv")
+db2022 <- read.csv("Employee_Salaries_2022.csv")
+```
+
+## Initial Review
+
+```{r}
+str(db2019)
+colSums(is.na(db2019))
+str(db2020)
+colSums(is.na(db2020))
+str(db2021)
+colSums(is.na(db2021))
+str(db2022)
+colSums(is.na(db2022))
+```
+
+## General Data Cleanup
+
+```{r}
+db2019 <- db2019 %>%
+  rename("Overtime" = "X2019.Overtime.Pay", 
+         "Longevity" = "X2019.Longevity.Pay",
+         "Department Name" = "Department.Name",
+         "Base Salary" = "Base.Salary") %>%
+  mutate("Year" = 2019)
+
+
+db2020 <- db2020 %>%
+  rename("Overtime" = "X2020.Overtime.Pay", 
+         "Longevity" = "X2020.Longevity.Pay",
+         "Department Name" = "Department.Name",
+         "Base Salary" = "Base.Salary") %>%
+  mutate("Year" = 2020)
+
+
+db2021 <- db2021 %>%
+  rename("Overtime" = "X2021.Overtime.Pay", 
+         "Longevity" = "X2021.Longevity.Pay",
+         "Department Name" = "Department.Name",
+         "Base Salary" = "Base.Salary") %>%
+  mutate("Year" = 2021)
+
+db2022 <- db2022 %>%
+  rename("Overtime" = "Overtime.Pay", 
+         "Longevity" = "Longevity.Pay",
+         "Department Name" = "Department_Name",
+         "Base Salary" = "Base.Salary") %>%
+  mutate("Year" = 2022)
+```
+
+```{r}
+db2019$Overtime <- sub(0,NA,db2019$Overtime)
+db2020$Overtime <- sub(0,NA,db2020$Overtime)
+db2021$Overtime <- sub(0,NA,db2021$Overtime)
+db2022$Overtime <- sub(0,NA,db2022$Overtime)
+db2019$Longevity <- sub(0,NA,db2019$Longevity)
+db2020$Longevity <- sub(0,NA,db2020$Longevity)
+db2021$Longevity <- sub(0,NA,db2021$Longevity)
+db2022$Longevity <- sub(0,NA,db2022$Longevity)
+
+colSums(is.na(db2019))
+colSums(is.na(db2020))
+colSums(is.na(db2021))
+colSums(is.na(db2022))
+```
+
+
+
+## EDA
+
+Through our EDA process, we are looking to find hints to answer our initial prompts. We are also looking to find information that will support defining what the new "pre-covid state" would look like. 
+
+### 2019 Employee Salaries Review
+
+```{r}
+str(db2019)
+options(scipen = 999)
+plot2019 <- ggplot(db2019, aes(`Department`, `Base Salary`))+
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(axis.text.x = element_text(angle = 45),
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("2019 Salaries by Department") +
+    xlab("Department")
+ggplotly(plot2019)
+
+stat2019 <- db2019 %>%
+  group_by(Department) %>%
+  summarise("Total Salaries" = sum(`Base Salary`,na.rm=T), 
+            "Average Salaries" = mean(`Base Salary`,na.rm=T),
+            "Count of Data Records" = n(),
+            "Lowest Salary" = min(`Base Salary`,na.rm=T),
+            "Highest Salary" = max(`Base Salary`,na.rm=T),
+            "Average Overtime Pay" = mean(`Overtime`, na.rm=T)) %>%
+  mutate("Salary Gap" = `Highest Salary` - `Lowest Salary`)
+head(stat2019)
+
+stat2019compare <- stat2019 %>%
+  ggplot(aes(x=`Average Salaries`, 
+             y=`Salary Gap`)) +
+  geom_point(aes(text = paste("Department: ",`Department`))) +
+  geom_smooth(method=lm , se = T) +
+  theme_minimal()
+ggplotly(stat2019compare + labs(title = "2019 Average Salary Versus Salary Gap"))
+```
+
+### 2020 Employee Salaries Review
+
+```{r}
+str(db2020)
+options(scipen = 999)
+plot2020 <- ggplot(db2020, aes(`Department`, `Base Salary`))+
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(axis.text.x = element_text(angle = 45),
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("2020 Salaries by Department") +
+    xlab("Department")
+ggplotly(plot2020)
+
+
+stat2020 <- db2020 %>%
+  group_by(Department) %>%
+  summarise("Total Salaries" = sum(`Base Salary`,na.rm=T), 
+            "Average Salaries" = mean(`Base Salary`,na.rm=T),
+            "Count of Data Records" = n(),
+            "Lowest Salary" = min(`Base Salary`,na.rm=T),
+            "Highest Salary" = max(`Base Salary`,na.rm=T),
+            "Average Overtime Pay" = mean(`Overtime`, na.rm=T)) %>%
+  mutate("Salary Gap" = `Highest Salary` - `Lowest Salary`)
+head(stat2020)
+
+stat2020compare <- stat2020 %>%
+  ggplot(aes(x=`Average Salaries`, 
+             y=`Salary Gap`)) +
+  geom_point(aes(text = paste("Department: ",`Department`))) +
+  geom_smooth(method=lm , se = T) +
+  theme_minimal()
+ggplotly(stat2020compare + labs(title = "2020 Average Salary Versus Salary Gap"))
+```
+
+### 2021 Employee Salaries Review
+
+```{r}
+str(db2021)
+options(scipen = 999)
+
+plot2021 <- ggplot(db2021, aes(`Department`, `Base Salary`))+
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(axis.text.x = element_text(angle = 45),
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("2021 Salaries by Department") +
+    xlab("Department")
+ggplotly(plot2021)
+
+
+stat2021 <- db2021 %>%
+  group_by(Department) %>%
+  summarise("Total Salaries" = sum(`Base Salary`,na.rm=T), 
+            "Average Salaries" = mean(`Base Salary`,na.rm=T),
+            "Count of Data Records" = n(),
+            "Lowest Salary" = min(`Base Salary`,na.rm=T),
+            "Highest Salary" = max(`Base Salary`,na.rm=T),
+            "Average Overtime Pay" = mean(`Overtime`, na.rm=T)) %>%
+  mutate("Salary Gap" = `Highest Salary` - `Lowest Salary`)
+head(stat2021)
+
+stat2021compare <- stat2021 %>%
+  ggplot(aes(x=`Average Salaries`, 
+             y=`Salary Gap`)) +
+  geom_point(aes(text = paste("Department: ",`Department`))) +
+  geom_smooth(method=lm , se = T) +
+  theme_minimal()
+ggplotly(stat2021compare + labs(title = "2021 Average Salary Versus Salary Gap"))
+```
+
+We see that the 2021 has a lot of na values in the overtime and longevity pay columns. Taking a look into the dataset, we see that it is due to being blank values, rather than entering 0. In the next set we will clean up the dataset.
+
+### 2022 Employee Salaries Review
+
+```{r}
+str(db2022)
+options(scipen = 999)
+
+plot2022 <- ggplot(db2022, aes(`Department`, `Base Salary`))+
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme(axis.text.x = element_text(angle = 45),
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("2022 Salaries by Department") +
+    xlab("Department")
+ggplotly(plot2022)
+
+
+stat2022 <- db2022 %>%
+  group_by(Department) %>%
+  summarise("Total Salaries" = sum(`Base Salary`,na.rm=T), 
+            "Average Salaries" = mean(`Base Salary`,na.rm=T),
+            "Count of Data Records" = n(),
+            "Lowest Salary" = min(`Base Salary`,na.rm=T),
+            "Highest Salary" = max(`Base Salary`,na.rm=T),
+            "Average Overtime Pay" = mean(`Overtime`, na.rm=T)) %>%
+  mutate("Salary Gap" = `Highest Salary` - `Lowest Salary`)
+head(stat2022)
+
+stat2022compare <- stat2022 %>%
+  ggplot(aes(x=`Average Salaries`, 
+             y=`Salary Gap`)) +
+  geom_point(aes(text = paste("Department: ",`Department`))) +
+  geom_smooth(method=lm , se = T) +
+  theme_minimal()
+ggplotly(stat2022compare + labs(title = "2022 Average Salary Versus Salary Gap"))
+```
+
+
+## Merge all three years together
+
+```{r}
+mergedSalary <- do.call("rbind",list(db2019,db2020,db2021,db2022))
+statAllYear <- mergedSalary %>%
+  group_by(Department, Year) %>%
+  summarise("Total Salaries" = sum(`Base Salary`,na.rm=T), 
+            "Average Salaries" = mean(`Base Salary`,na.rm=T),
+            "Count of Data Records" = n(),
+            "Lowest Salary" = min(`Base Salary`,na.rm=T),
+            "Highest Salary" = max(`Base Salary`,na.rm=T),
+            "Average Overtime Pay" = mean(`Overtime`, na.rm=T)) %>%
+  mutate("Salary Gap" = `Highest Salary` - `Lowest Salary`)
+head(statAllYear)
+statOnlyYear <- mergedSalary %>%
+  group_by(Year) %>%
+  summarise("Total Salaries" = sum(`Base Salary`,na.rm=T), 
+            "Average Salaries" = mean(`Base Salary`,na.rm=T),
+            "Count of Data Records" = n(),
+            "Lowest Salary" = min(`Base Salary`,na.rm=T),
+            "Highest Salary" = max(`Base Salary`,na.rm=T),
+            "Average Overtime Pay" = mean(`Overtime`, na.rm=T)) %>%
+  mutate("Salary Gap" = `Highest Salary` - `Lowest Salary`)
+```
+
+## Review of All Years
+
+```{r}
+# Comparison plots
+compareAllp1 <- statAllYear %>%
+  ggplot(aes(x = `Average Salaries`, y = `Salary Gap`)) + 
+  geom_point(aes(size = `Count of Data Records`, 
+                 color = Department,
+                 alpha = 0.6))+
+  theme_minimal() +
+  geom_smooth(method = lm, se = T)+
+  facet_wrap(~Year,nrow=2)+
+  theme(legend.position='none')+
+  scale_x_continuous(labels = scales::dollar_format())+
+  scale_y_continuous(labels = scales::dollar_format())+
+  labs(title="Salary Gap Versus Average Salary by Year")
+ggplotly(compareAllp1)
+```
+
+## Create Averages
+
+```{r}
+# Create average for each department year
+mergedSalaryFinal <- merge(mergedSalary, statAllYear, by = c("Department","Year"))
+
+compareAllp2 <- mergedSalaryFinal %>%
+  ggplot(aes(x = `Base Salary`, y = `Average Salaries`)) + 
+  geom_point(aes(color = Department,
+                 alpha = 0.6))+
+  theme_minimal() +
+  facet_wrap(~Year,nrow=2)+
+  theme(legend.position='none')+
+  scale_x_continuous(labels = scales::dollar_format())+
+  scale_y_continuous(labels = scales::dollar_format())+
+  labs(title="Base Salary Versus Average Salary Per Year")
+# ggplotly(compareAllp2) # too much lag to actual run due to number of items
+compareAllp2
+# Create average for year
+```
+
+
+```{r}
+cor(mergedSalaryFinal$`Base Salary`, mergedSalaryFinal$`Average Salaries`)
+model <- lm(`Average Salaries`~`Base Salary`, data = mergedSalaryFinal)
+summary(model)
+```
+
+From our linear regression model between the average salaries and base salary, we find our formula to be:
+
+$$
+Average Salaries = 65510.57 + 0.192618 * Base Salary
+$$
+
+```{r}
+growthRate = statOnlyYear %>%
+  arrange(Year) %>%
+  mutate(diffYear = Year - lag(Year),
+         diffGrowth = `Average Salaries` - lag(`Average Salaries`),
+         ratePerc= (diffGrowth / diffYear)/lag(`Average Salaries`) * 100)
+AvgGrowth = mean(growthRate$ratePerc,na.rm = TRUE)
+
+print(paste("Our average salaries are increasing at a", round(AvgGrowth,2), "% rate."))
+```
+
+
+## Trend Analysis
+
+```{r}
+# Do some graphs
+yearAvgSalPlot <- statOnlyYear %>%
+  ggplot(aes(x = Year, y = `Average Salaries`)) + 
+  geom_line() +
+  geom_point() +
+  theme_minimal() +
+  labs(title="Trend of Total Average salaries")
+ggplotly(yearAvgSalPlot)
+```
+
+| Year | Average Salary | Percentage Change |
+|------|----------------|-------------------|
+| 2019 | $78,936.02     |                   |
+| 2020 | $78,771.46     | -0.208%           |
+| 2021 | $81,339.53     |  3.260%           |
+| 2022 | $85,503.28     |  5.119%           |
+
+```{r}
+mu <- mergedSalaryFinal %>%
+  group_by(Gender) %>%
+  summarise("grp.mean" = mean(`Average Salaries`,na.rm=T))
+
+yearHistGenderPlot <- mergedSalaryFinal %>%
+  ggplot(aes(x = `Average Salaries`, color = Gender)) + 
+  geom_histogram(fill = "White",position = "dodge", alpha = 0.5) +
+  geom_vline(data = mu, aes(xintercept=grp.mean,color=Gender),
+             linetype = "dashed") +
+  facet_wrap(~Year,nrow = 2)
+ggplotly(yearHistGenderPlot)
+```
+
+Here we can see in each year, on average females had a higher average salary as compared to their male counterparts.
+
+## Review of additional datasets (Final Project)
+
+Due to some limitations with the datasets, we want to pull in outside resources to support statistical analysis. Some of the data points we will be able to use are US Inflation rates, Montgomery County unemployment rates, amongst others. 
+
+## Employment changes
+
+```{r}
+# Discuss changes in employment counts/avg/std by department
+```
+
+```{r}
+# Pull in inflation data
+inflation <- data.frame(year=c("2019","2020","2021","2022"),
+                        rate=c(0.023,0.014,0.07,0.065))
+
+# Unemployment Rate for Montgomery County provided by U.S. Bureau of Labor Statistics (BLS)
+unemploymentRate <- data.frame(year=c("2019","2020","2021","2022"),
+                               rate=c(0.027,0.054,0.042,0.028))
+
+
+# discuss Maryland rules on work from home and some timings on major rulings
+```
+
+## Review of specific departments
+
+```{r}
+# Break out of departments that may have some interest
+# CEX <- Has the largest salary gap
+# IGR <- highest average salary
+# LIB HRC TBS <- this group has single outlier on top
+# POL DOT <- Has large amount of outliers above and below
+```
+
+
+## Analysis
+
+```{r}
+# Add statistical analysis
+# ML?
+# Bayesian Stats?
+# Mann-Whitney U Tests?
+```
+
+## Summary of Findings
+
+## Source
+
+Luh, Kathy (2020). Employee Salaries - 2019, dataMontgomery. https://data.montgomerycountymd.gov/Human-Resources/Employee-Salaries-2019/qatd-z57d
+
+Luh, Kathy (2021). Employee Salaries - 2020, dataMontgomery. https://data.montgomerycountymd.gov/Human-Resources/Employee-Salaries-2020/he7s-ebwb
+
+Luh, Kathy (2022). Employee Salaries - 2021, dataMontgomery. https://data.montgomerycountymd.gov/Human-Resources/Employee-Salaries-2021/kmkb-bmhe
+
+Luh, Kathy (2023). Employee Salaries - 2022, dataMontgomery. https://data.montgomerycountymd.gov/Human-Resources/Employee-Salaries-2022/njz9-yp4y
+
+U.S. Bureau of Labor Statistics, Unemployment Rate in Montgomery County, MD [MDMONT0URN], retrieved from FRED, Federal Reserve Bank of St. Louis; https://fred.stlouisfed.org/series/MDMONT0URN, March 22, 2023.
+
+“CPI Inflation Calculator.” U.S. Bureau of Labor Statistics, https://www.bls.gov/data/inflation_calculator.htm, March 22, 2023.
+

@@ -51,7 +51,7 @@ Are we getting to the point where job statistics are getting back to pre-covid e
 ## Initiate
 
 ```{r}
-pacman::p_load(tidyverse,dplyr,readxl,plotly,ggthemes, viridis)
+pacman::p_load(tidyverse,dplyr,readxl,plotly,ggthemes, viridis,RColorBrewer)
 
 setwd("~/Data Study/Data 205 MC")
 ```
@@ -365,12 +365,12 @@ Average Salaries = 65510.57 + 0.192618 * Base Salary
 $$
 
 ```{r}
-growthRate = statOnlyYear %>%
+growthRateAVG = statOnlyYear %>%
   arrange(Year) %>%
   mutate(diffYear = Year - lag(Year),
          diffGrowth = `Average Salaries` - lag(`Average Salaries`),
          ratePerc= (diffGrowth / diffYear)/lag(`Average Salaries`) * 100)
-AvgGrowth = mean(growthRate$ratePerc,na.rm = TRUE)
+AvgGrowth = mean(growthRateAVG$ratePerc,na.rm = TRUE)
 
 print(paste("Our average salaries are increasing at a", round(AvgGrowth,2), "% rate."))
 ```
@@ -382,19 +382,20 @@ print(paste("Our average salaries are increasing at a", round(AvgGrowth,2), "% r
 # Do some graphs
 yearAvgSalPlot <- statOnlyYear %>%
   ggplot(aes(x = Year, y = `Average Salaries`)) + 
-  geom_line() +
+  geom_line(color="Orange") +
   geom_point() +
   theme_minimal() +
-  labs(title="Trend of Total Average salaries")
+  labs(title="Montgomery County Trend of Average salaries")
+ggsave("MCSal.png")
 ggplotly(yearAvgSalPlot)
 ```
 
-| Year | Average Salary | Percentage Change |
-|------|----------------|-------------------|
-| 2019 | $78,936.02     |                   |
-| 2020 | $78,771.46     | -0.208%           |
-| 2021 | $81,339.53     |  3.260%           |
-| 2022 | $85,503.28     |  5.119%           |
+| Year | Average Salary | Percentage Change | Inflation |
+|------|----------------|-------------------|-----------|
+| 2019 | $78,936.02     |                   | 2.3%      |
+| 2020 | $78,771.46     | -0.208%           | 1.4%      |
+| 2021 | $81,339.53     |  3.260%           | 7.0%      |
+| 2022 | $85,503.28     |  5.119%           | 6.5%      |
 
 ```{r}
 mu <- mergedSalaryFinal %>%
@@ -406,7 +407,11 @@ yearHistGenderPlot <- mergedSalaryFinal %>%
   geom_histogram(fill = "White",position = "dodge", alpha = 0.5) +
   geom_vline(data = mu, aes(xintercept=grp.mean,color=Gender),
              linetype = "dashed") +
-  facet_wrap(~Year,nrow = 2)
+  facet_wrap(~Year,nrow = 2) +
+  scale_x_continuous(labels = scales::dollar_format()) +
+  labs(title="Average Salaries by Year and Gender") +
+  ylab("Number of Employees")
+ggsave("MontgomeryYearGender.png")
 ggplotly(yearHistGenderPlot)
 ```
 
@@ -449,15 +454,66 @@ unemploymentRate <- data.frame(year=c("2019","2020","2021","2022"),
 ## Analysis
 
 ```{r}
-# Add statistical analysis
-# ML?
-# Bayesian Stats?
-# Mann-Whitney U Tests?
+countyStat2020 <- data.frame(County = c("Montgomery", "Howard", "Fairfax","DC","Loudoun","Santa Clara","Douglas", "Williamson"),
+                             State = c("MD", "MD","VA","DC","VA","CA","CO","TN"),
+                             Population = c(1050000,322407,1150000,701974,405312,1920000,344280,232380),
+                             Employed = c(559029, 170492,611782,382000,220064,992202,188155,117937),
+                             MedianIncome = c(111812,124042,127866,90842,147111,130890,121393,111196),
+                             MedianIncomeMen = c(63611,84366,74391,72201,93579,79036,79055,76666),
+                             MedianIncomeWomen = c(50242,55539,52422,61133,52860,50802,46163,41063))
+print(head(countyStat2020,8))
 ```
+
+
+
+```{r}
+allCounty2018 <- read.csv("2018AllCounty.csv")
+allCounty2019 <- read.csv("2019AllCounty.csv")
+allCounty2021 <- read.csv("2021AllCounty.csv")
+print(head(allCounty2018,20))
+
+allCounty2018 <- allCounty2018 %>% filter(row_number() %in% c(12,13))
+allCounty2019 <- allCounty2019 %>% filter(row_number() %in% c(12,13))
+allCounty2021 <- allCounty2021 %>% filter(row_number() %in% c(12,13))
+print(head(allCounty2018,20))
+```
+
+```{r}
+totalCountyStat <- data.frame(County = c("Montgomery", "Montgomery","Montgomery","Montgomery","Howard","Howard","Howard","Howard", "Fairfax","Fairfax","Fairfax","Fairfax","DC","DC","DC","DC","Loudoun","Loudoun","Loudoun","Loudoun","Santa Clara","Santa Clara","Santa Clara","Santa Clara","Douglas","Douglas","Douglas","Douglas", "Williamson","Williamson","Williamson","Williamson"),
+                              Year = c(2018,2019,2020,2021,2018,2019,2020,2021,2018,2019,2020,2021,2018,2019,2020,2021,2018,2019,2020,2021,2018,2019,2020,2021,2018,2019,2020,2021,2018,2019,2020,2021),
+                              MedianIncome = c(108188,110389,111812,112854,116984,121618,124042,133267,122227,128374,127866,134115,85203,92266,90842,90088,139915,151800,147111,153506,126606,133076,130890,141562,119615,122867,121393,129299,110700,115507,111196,117927))
+```
+
+```{r}
+yearMedianAllCountyPlot <- totalCountyStat %>%
+  ggplot(aes(x = Year, y = `MedianIncome`, color = County)) + 
+  geom_point() +
+  theme_minimal() +
+  labs(title="Trend of Median salaries")
+ggplotly(yearMedianAllCountyPlot)
+```
+
+```{r}
+yearMedianAllCountyPlot <- totalCountyStat %>%
+  ggplot(aes(x = Year, y = `MedianIncome`)) + 
+  geom_point() +
+  geom_line(aes(color = County)) +
+  scale_color_brewer(palette = "Set2") +
+  theme_minimal() +
+  labs(title="Trend of Median salaries")+ 
+  scale_y_continuous(labels = scales::dollar_format())
+yearMedianAllCountyPlot
+ggsave("AllCounty.png")
+```
+
+
 
 ## Summary of Findings
 
 ## Source
+
+Deloitte (2020). Data USA County Profile 2020, Data USA. 
+https://datausa.io/
 
 Luh, Kathy (2020). Employee Salaries - 2019, dataMontgomery. https://data.montgomerycountymd.gov/Human-Resources/Employee-Salaries-2019/qatd-z57d
 
